@@ -51,10 +51,13 @@ case "$1" in
         rm -rf target-cov/debug/deps/*.gcda
 
         cargo build --tests
-        cargo test --no-fail-fast
+        cargo test --no-fail-fast recv_data
+        # cargo test --no-fail-fast utp_read
         # cargo test --all-features --no-fail-fast
 
         grcov ./target-cov/debug/ -s . -t html --llvm --branch --ignore-not-existing --ignore "*rust/library*" --ignore "*registry*" --excl-line "grcov_ignore|assert"
+
+        exit
         ;;
     source-coverage)
         export CARGO_INCREMENTAL="0"
@@ -83,6 +86,10 @@ case "$1" in
 
         # grcov ./target/debug/ -s src/ -t lcov --llvm --branch --ignore-not-existing -o ./coverage.info --ignore "*rust/src*" --ignore "*registry*" --excl-line "grcov_ignore|assert"
         # grcov ./target/debug/ -s src/ -t coveralls+ --llvm --branch --ignore-not-existing -o ./coverage.json --ignore "*registry*" --token ${{ secrets.CODECOV_TOKEN }} --excl-line "grcov_ignore|assert"
+        exit
+        ;;
+    jaeger)
+        docker-compose -f jaeger.yaml up --abort-on-container-exit --force-recreate
         exit
         ;;
     *)

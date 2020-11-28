@@ -9,6 +9,7 @@ use tokio::{
 // use tokio::net::UdpSocket;
 use fixed::types::I48F16;
 use std::{collections::VecDeque, net::SocketAddr, pin::Pin, sync::Arc};
+// use tracing::{debug, error, info, span, warn, Level};
 
 // use tokio::sync::mpsc::{Receiver as TokioReceiver, channel, error::TrySendError as TokioTrySendError};
 
@@ -39,6 +40,7 @@ const RESEND: u8 = 1 << 0;
 const RESEND_ONLY_LOST: u8 = 1 << 1;
 const SEND_STATE: u8 = 1 << 2;
 
+#[derive(Debug)]
 struct NeedToSend {
     detail: u8,
 }
@@ -65,6 +67,7 @@ impl NeedToSend {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct UtpManager {
     socket: Arc<UdpSocket>,
     recv: Pin<Box<Receiver<UtpEvent>>>,
@@ -111,9 +114,6 @@ pub(super) struct UtpManager {
     rtt: usize,
     rtt_var: usize,
     rto: usize,
-
-    received: usize,
-    // received_data: Map<SequenceNumber, Box<[u8]>>
 }
 
 // #[derive(Debug)]
@@ -194,7 +194,6 @@ impl UtpManager {
             rtt_var: 0,
             rto: 0,
             ack_bitfield: AckedBitfield::default(),
-            received: 0,
         }
     }
 
@@ -276,6 +275,7 @@ impl UtpManager {
         self.send_packet(PacketType::Syn);
     }
 
+    // #[tracing::instrument(skip(self))]
     fn process_incoming(&mut self, event: UtpEvent) -> Result<()> {
         match event {
             UtpEvent::IncomingPacket { packet } => {
@@ -327,10 +327,13 @@ impl UtpManager {
         Ok(())
     }
 
+    // #[tracing::instrument(skip(self))]
     fn on_timeout(&mut self) -> Result<()> {
         use UtpState::*;
 
         let utp_state = self.state.utp_state();
+
+        // info!(self.ntimeout, ?utp_state);
 
         if (utp_state == SynSent && self.ntimeout >= 3) || self.ntimeout >= 7 {
             return Err(Error::new(ErrorKind::TimedOut, "utp timed out").into());
@@ -380,6 +383,10 @@ impl UtpManager {
         });
     }
 
+    // #[tracing::instrument(
+    //     skip(self),
+    //     fields(packet_type = ?packet.get_type(), state = ?self.state.utp_state()),
+    // )]
     fn dispatch(&mut self, packet: ArenaBox<Packet>) -> Result<()> {
         // println!("DISPATCH HEADER: {:?}", (*packet));
 
@@ -395,6 +402,8 @@ impl UtpManager {
         self.timeout = Instant::now() + Duration::from_millis(self.rto as u64);
 
         // println!("STATE {:?}", (&packet_type, utp_state));
+
+        // info!(?packet_type, "dispatch {:?} {:?}", packet_type, utp_state);
 
         match (packet_type, utp_state) {
             (PacketType::Syn, UtpState::None) => {
@@ -465,13 +474,9 @@ impl UtpManager {
                 let seq_num = packet.get_seq_number();
                 self.ack_bitfield.ack(seq_num);
 
-                self.received += packet.get_data().len();
-
                 self.on_receive
                     .try_send(ReceivedData::Data { packet })
                     .unwrap();
-
-                // println!("received={}", self.received);
 
                 self.send_state();
             }
@@ -486,6 +491,7 @@ impl UtpManager {
         Ok(())
     }
 
+    // #[tracing::instrument(skip(self))]
     fn send_state(&mut self) {
         self.need_send.set(SEND_STATE);
 
@@ -524,6 +530,10 @@ impl UtpManager {
         // );
     }
 
+    // #[tracing::instrument(
+    //     skip(self, packet)
+    //     fields(in_flight = self.state.inflight_size() as i64, state = ?self.state.utp_state()),
+    // )]
     fn handle_state(&mut self, packet: ArenaBox<Packet>) -> Result<()> {
         let ack_number = packet.get_ack_number();
         let received_at = packet.received_at();
@@ -541,6 +551,18 @@ impl UtpManager {
         //        println!("PACKETS IN FLIGHT {:?}", self.inflight_packets.as_slices());
 
         // println!("IN_FLIGHT BEFORE {:?} AFTER {:?}", before, self.state.inflight_size());
+
+        // TODO: For tracing
+        // info!(
+        //     newly_acked = bytes_newly_acked as i64,
+        //     ack_number = ?ack_number,
+        //     received_at = ?received_at,
+        //     in_flight = in_flight as i64,
+        //     same_ack = self.last_ack == ack_number,
+        //     duplicated = self.last_ack == ack_number && self.ack_duplicate > 3
+        // );
+
+        //info!(newly_acked = bytes_newly_acked, "handle_state");
 
         let mut lost = false;
 
@@ -738,6 +760,7 @@ impl UtpManager {
         }
     }
 
+    // #[tracing::instrument(skip(self))]
     fn send_packet_inner(&mut self, mut packet: ArenaBox<Packet>, place: SendPush) -> Result<()> {
         //let ack_number = self.state.ack_number();
         let ack_number = self.ack_bitfield.current();
@@ -802,6 +825,7 @@ impl UtpManager {
         Ok(())
     }
 
+    // #[tracing::instrument(skip(self))]
     fn resend_packets(&mut self, only_lost: bool) -> Result<()> {
         // let mut inflight_packets = self.state.inflight_packets.write().await;
 

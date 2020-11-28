@@ -77,7 +77,9 @@ impl AckedBitfield {
             None => {
                 self.first.replace(num);
             }
-            Some(_) => {}
+            Some(_) => {
+                // println!("ignoring {:?} first={:?}", num, self.first)
+            }
         }
     }
 

@@ -1092,6 +1092,11 @@ pub const UDP_TEREDO_MTU: usize = TEREDO_MTU - IPV6_HEADER_SIZE - UDP_HEADER_SIZ
 mod tests {
     use super::{listener::UtpListener, SequenceNumber};
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    // use tracing::info;
+    // use tracing_subscriber;
+    // use tracing::Level;
+    // use tracing_subscriber::layer::SubscriberExt;
+    // use tracing_subscriber::prelude::*;
 
     #[test]
     fn seq_number_less_equal() {
@@ -1155,11 +1160,35 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 10)]
     async fn send_data() {
+        // let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+        //     .with_service_name("utp")
+        //     .install()
+        //     .unwrap();
+        // let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+        // tracing_subscriber::registry()
+        //     .with(opentelemetry)
+        //     .try_init()
+        //     .unwrap();
+
+        // let subscriber = tracing_subscriber::fmt::fmt()
+        //     .with_max_level(Level::TRACE)
+        //     .finish();
+        // tracing::subscriber::set_global_default(subscriber);
+
+        // tracing_subscriber::fmt::init();
+
         // let file = "/home/sebastien/Downloads/Escape.Plan.2013.1080p.BluRay.x265-RARBG-[rarbg.to].torrent";
         let file = "/home/sebastien/Downloads/Fedora-Cinnamon-Live-x86_64-32-1.6.iso";
         let buffer = std::fs::read(file).unwrap();
 
-        println!("buffer length={}", buffer.len());
+        let buffer = &buffer[..1000000];
+
+        let data_len = buffer.len();
+
+        // info!(data_len, "hello");
+        // println!("OK");
+
+        // println!("buffer length={}", buffer.len());
 
         let start = std::time::Instant::now();
 

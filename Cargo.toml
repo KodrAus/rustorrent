@@ -77,10 +77,16 @@ fixed = { version = "1", default-features = false }
 
 crossbeam-epoch = { version = "0.9", default-features = false }
 
-tokio = { version = "0.3", features = ["full"] }
+tokio = { version = "0.3", features = ["full", "tracing"] }
 # async-channel = { path = "/home/sebastien/github/async-channel" }
 async-channel = "1.5"
 socket2 = "0.3"
+
+# tracing = "0.1"
+# tracing-subscriber = "0.2"
+# tracing-opentelemetry = "*"
+# opentelemetry = { version = "0.10", default-features = false, features = ["trace"] }
+# opentelemetry-jaeger = { version = "0.9", features = [] }
 
 # TODO: Make it optional
 # packed_simd = { version = "0.3.3" }
